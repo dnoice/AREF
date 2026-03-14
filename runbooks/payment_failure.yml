@@ -1,0 +1,86 @@
+---
+# AREF Runbook: Payment Provider Failure
+# Tier: T0 (Emergency Stabilization) + T1 (Minimum Viable Recovery)
+# Version-controlled alongside the systems it protects (Blueprint 3.4.2)
+
+runbooks:
+  - name: payment_t0_stabilize
+    service: payments
+    tier: 0
+    version: "1.0.0"
+    description: "Emergency stabilization for payment provider outage"
+    external_dependencies:
+      - "Payment provider status page"
+    steps:
+      - order: 1
+        action: detect_payment_failures
+        description: "Confirm payment failure rate exceeds threshold"
+        role: automated
+        timeout_seconds: 10
+        automated: true
+
+      - order: 2
+        action: open_circuit_breaker
+        description: "Open circuit breaker on failing payment provider"
+        role: automated
+        timeout_seconds: 5
+        automated: true
+
+      - order: 3
+        action: switch_provider
+        description: "Switch to backup payment provider (square/paypal)"
+        role: automated
+        timeout_seconds: 10
+        automated: true
+        escalation: "Page on-call if backup provider also fails"
+
+      - order: 4
+        action: enable_degraded_checkout
+        description: "Enable degraded checkout mode (queued payments)"
+        role: automated
+        timeout_seconds: 5
+        automated: true
+
+      - order: 5
+        action: notify_on_call
+        description: "Page payments on-call engineer"
+        role: automated
+        timeout_seconds: 10
+        automated: true
+
+  - name: payment_t1_recovery
+    service: payments
+    tier: 1
+    version: "1.0.0"
+    description: "Minimum viable recovery for payment provider outage"
+    steps:
+      - order: 1
+        action: assess_queued_payments
+        description: "Count queued/failed payments during outage"
+        role: incident_commander
+        timeout_seconds: 120
+
+      - order: 2
+        action: verify_backup_provider
+        description: "Confirm backup provider is processing successfully"
+        role: engineer
+        timeout_seconds: 60
+
+      - order: 3
+        action: retry_failed_payments
+        description: "Retry any failed payments through backup provider"
+        role: engineer
+        timeout_seconds: 300
+        escalation: "Escalate to T2 if retry rate < 90%"
+
+      - order: 4
+        action: update_status_page
+        description: "Post status update for customers"
+        role: incident_commander
+        timeout_seconds: 30
+
+      - order: 5
+        action: monitor_recovery
+        description: "Watch payment success rate for 5 minutes"
+        role: engineer
+        timeout_seconds: 300

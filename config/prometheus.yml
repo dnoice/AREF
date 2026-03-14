@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: "aref-dashboard"
+    static_configs:
+      - targets: ["dashboard:8080"]
+    metrics_path: /metrics
+
+  - job_name: "aref-gateway"
+    static_configs:
+      - targets: ["gateway:8000"]
+    metrics_path: /metrics
+
+  - job_name: "aref-orders"
+    static_configs:
+      - targets: ["orders:8001"]
+    metrics_path: /metrics
+
+  - job_name: "aref-payments"
+    static_configs:
+      - targets: ["payments:8002"]
+    metrics_path: /metrics
+
+  - job_name: "aref-inventory"
+    static_configs:
+      - targets: ["inventory:8003"]
+    metrics_path: /metrics
+
+  - job_name: "aref-notifications"
+    static_configs:
+      - targets: ["notifications:8004"]
+    metrics_path: /metrics

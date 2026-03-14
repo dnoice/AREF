@@ -1,0 +1,128 @@
+# AREF Platform — Docker Compose Orchestration
+# Run: docker-compose up --build
+# Dashboard: http://localhost:8080
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3000
+
+services:
+
+  # ---------- Infrastructure ----------
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aref
+      POSTGRES_USER: aref
+      POSTGRES_PASSWORD: aref_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aref"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------- Monitoring ----------
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: aref
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+
+  # ---------- Microservices ----------
+
+  gateway:
+    build: .
+    command: uvicorn services.gateway.gateway_app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - AREF_ENVIRONMENT=docker
+    depends_on:
+      - redis
+
+  orders:
+    build: .
+    command: uvicorn services.orders.orders_app:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      - AREF_ENVIRONMENT=docker
+    depends_on:
+      - postgres
+      - redis
+
+  payments:
+    build: .
+    command: uvicorn services.payments.payments_app:app --host 0.0.0.0 --port 8002
+    ports:
+      - "8002:8002"
+    environment:
+      - AREF_ENVIRONMENT=docker
+
+  inventory:
+    build: .
+    command: uvicorn services.inventory.inventory_app:app --host 0.0.0.0 --port 8003
+    ports:
+      - "8003:8003"
+    environment:
+      - AREF_ENVIRONMENT=docker
+
+  notifications:
+    build: .
+    command: uvicorn services.notifications.notifications_app:app --host 0.0.0.0 --port 8004
+    ports:
+      - "8004:8004"
+    environment:
+      - AREF_ENVIRONMENT=docker
+    depends_on:
+      - redis
+
+  # ---------- AREF Control Plane ----------
+
+  dashboard:
+    build: .
+    command: uvicorn aref.dashboard.app:app --host 0.0.0.0 --port 8080
+    ports:
+      - "8080:8080"
+    environment:
+      - AREF_ENVIRONMENT=docker
+      - AREF_DASHBOARD_PORT=8080
+    depends_on:
+      - gateway
+      - orders
+      - payments
+      - inventory
+      - notifications
+      - prometheus
+
+volumes:
+  pgdata:

@@ -1,0 +1,83 @@
+[project]
+name = "aref-platform"
+version = "2.0.0"
+description = "Adaptive Resilience Engineering Framework — A comprehensive systems-level platform for infrastructure resilience, failure recovery, and operational continuity"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Dennis 'dendogg' Smaltz", email = "dennis@digispace.dev" },
+]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.27.0",
+    # Database
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    # Redis
+    "redis[hiredis]>=5.0.0",
+    # Monitoring & metrics
+    "prometheus-client>=0.20.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    # Data & validation
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.1.0",
+    # CLI
+    "rich>=13.7.0",
+    "textual>=0.50.0",
+    "click>=8.1.0",
+    # ML / anomaly detection
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    # Scheduling & async
+    "apscheduler>=3.10.0",
+    "tenacity>=8.2.0",
+    # YAML for runbooks
+    "pyyaml>=6.0.0",
+    # Logging
+    "structlog>=24.1.0",
+    # Jinja for templates/reports
+    "jinja2>=3.1.0",
+    # Charts for dashboard
+    "plotly>=5.18.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.27.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+]
+
+[project.scripts]
+aref = "aref.cli.main:cli"
+aref-demo = "scripts.demo:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aref", "services", "chaos", "scripts"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

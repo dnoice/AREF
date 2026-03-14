@@ -1,0 +1,1229 @@
+<!--
+✒ Metadata
+    - Title: AREF Dashboard Template (AREF Edition - v2.0)
+    - File Name: index.html
+    - Relative Path: aref/dashboard/templates/index.html
+    - Artifact Type: script
+    - Version: 2.0.0
+    - Date: 2026-03-13
+    - Update: Thursday, March 13, 2026
+    - Author: Dennis 'dnoice' Smaltz
+    - A.I. Acknowledgement: Anthropic - Claude Opus 4
+    - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Description:
+    Single-page HTML template for the AREF Dashboard — the primary operator
+    interface for the Adaptive Resilience Engineering Framework. Provides a
+    sidebar-navigated layout with dedicated views for each of the five pillars,
+    aggregate metrics, service health, chaos lab controls, and event timeline.
+
+✒ Key Features:
+    - Feature 1: Sidebar navigation with icon sprites for all five pillars,
+                  services, chaos lab, metrics, and timeline views
+    - Feature 2: Overview dashboard with pillar card grid, CRS gauge, and
+                  maturity radar chart placeholders
+    - Feature 3: Detection view — alert stats, threshold rules, anomaly streams,
+                  synthetic probe status, SLI/SLO tracker, and configuration grid
+    - Feature 4: Absorption view — circuit breaker status, rate limiters, bulkheads,
+                  blast radius dependency map, and degradation tier management
+    - Feature 5: Adaptation view — feature flag toggles, traffic route weights,
+                  auto-scaler status, decision tree strategy reference, and history log
+    - Feature 6: Recovery view — recovery tier definitions (T0–T4), runbook catalog
+                  with step-level detail, execution history, and drill tracking
+    - Feature 7: Evolution view — six-step post-incident review process, action item
+                  tracker, pattern matching, knowledge base entries, and metrics
+    - Feature 8: Metrics view — KPI cards (MTTD, MTTR, Availability, Incidents),
+                  error budget gauges, CRS by risk profile, weight distribution
+                  chart, and pillar score breakdown
+    - Feature 9: Chaos Lab — experiment selector with start/stop controls
+    - Feature 10: Inlined SVG icon sprite for zero-latency icon rendering
+    - Feature 11: Inter + JetBrains Mono font loading via Google Fonts
+    - Feature 12: Fully responsive layout with CSS Grid app structure
+
+✒ Usage Instructions:
+    Served by the FastAPI app at the root route ("/").
+    Not accessed directly — loaded via:
+        http://localhost:9000/
+
+    Template is read from disk by app.py:
+        return (TEMPLATE_DIR / "index.html").read_text()
+
+✒ Other Important Information:
+    - Dependencies:
+        CSS: /static/css/dashboard.css
+        JS: /static/js/dashboard.js
+        Fonts: Inter (400–800), JetBrains Mono (400–800) via Google Fonts
+    - Compatible platforms: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+    - Accessibility: Semantic HTML structure; SVG icons with symbol IDs;
+      interactive elements use onclick handlers (keyboard nav not yet implemented)
+    - Performance notes: SVG sprite inlined to avoid extra network requests;
+      CSS and JS loaded as external files for cacheability
+    - Known limitations: No client-side routing — navigation is handled by
+      show/hide of page-section divs via JavaScript; no service worker or
+      offline support; chaos lab requires backend connectivity
+---------
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AREF Dashboard | digiSpace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2'><polygon points='12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2'/></svg>">
+</head>
+<body>
+
+<!-- SVG Icon Sprite (inlined for zero-latency) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="icon-detection" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></symbol>
+  <symbol id="icon-absorption" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7l-9-5z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="icon-adaptation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="icon-recovery" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"/><path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14"/></symbol>
+  <symbol id="icon-evolution" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+  <symbol id="icon-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="icon-chaos" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="icon-service" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></symbol>
+  <symbol id="icon-healthy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+  <symbol id="icon-metrics" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></symbol>
+  <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="icon-digispace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><line x1="22" y1="8.5" x2="12" y2="15.5"/><line x1="2" y1="8.5" x2="12" y2="15.5"/></symbol>
+</svg>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="app-sidebar">
+    <div class="sidebar-brand">
+      <svg><use href="#icon-digispace"/></svg>
+      <div>
+        <div class="sidebar-brand-text">AREF</div>
+        <div class="sidebar-brand-version">v2.0.0</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Overview</div>
+      <nav class="sidebar-nav">
+        <a class="sidebar-nav-item active" data-section="overview" onclick="navigate('overview')">
+          <svg><use href="#icon-dashboard"/></svg> Dashboard
+        </a>
+        <a class="sidebar-nav-item" data-section="metrics" onclick="navigate('metrics')">
+          <svg><use href="#icon-metrics"/></svg> Metrics
+        </a>
+      </nav>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Five Pillars</div>
+      <nav class="sidebar-nav">
+        <a class="sidebar-nav-item" data-section="detection" onclick="navigate('detection')">
+          <svg><use href="#icon-detection"/></svg> Detection
+          <span class="nav-indicator" style="background:var(--color-detection)"></span>
+        </a>
+        <a class="sidebar-nav-item" data-section="absorption" onclick="navigate('absorption')">
+          <svg><use href="#icon-absorption"/></svg> Absorption
+          <span class="nav-indicator" style="background:var(--color-absorption)"></span>
+        </a>
+        <a class="sidebar-nav-item" data-section="adaptation" onclick="navigate('adaptation')">
+          <svg><use href="#icon-adaptation"/></svg> Adaptation
+          <span class="nav-indicator" style="background:var(--color-adaptation)"></span>
+        </a>
+        <a class="sidebar-nav-item" data-section="recovery" onclick="navigate('recovery')">
+          <svg><use href="#icon-recovery"/></svg> Recovery
+          <span class="nav-indicator" style="background:var(--color-recovery)"></span>
+        </a>
+        <a class="sidebar-nav-item" data-section="evolution" onclick="navigate('evolution')">
+          <svg><use href="#icon-evolution"/></svg> Evolution
+          <span class="nav-indicator" style="background:var(--color-evolution)"></span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Operations</div>
+      <nav class="sidebar-nav">
+        <a class="sidebar-nav-item" data-section="services" onclick="navigate('services')">
+          <svg><use href="#icon-service"/></svg> Services
+        </a>
+        <a class="sidebar-nav-item" data-section="chaos" onclick="navigate('chaos')">
+          <svg><use href="#icon-chaos"/></svg> Chaos Lab
+          <span class="nav-indicator" style="background:var(--color-chaos)"></span>
+        </a>
+        <a class="sidebar-nav-item" data-section="timeline" onclick="navigate('timeline')">
+          <svg><use href="#icon-clock"/></svg> Timeline
+        </a>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Header -->
+  <header class="app-header">
+    <span class="header-title">Adaptive Resilience Engineering Framework</span>
+    <div class="header-actions">
+      <span id="system-status" class="header-badge badge-healthy">OPERATIONAL</span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+
+    <!-- Overview Section -->
+    <div id="section-overview" class="page-section">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Resilience Dashboard</h1>
+          <p class="page-subtitle">Real-time view of all five AREF pillars</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-ghost" onclick="refreshData()">
+            <svg><use href="#icon-recovery"/></svg> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Pillar Cards -->
+      <div id="pillar-cards" class="card-grid card-grid--pillars stagger"></div>
+
+      <!-- CRS + Radar Row -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card card--glow">
+          <div class="card-title" style="margin-bottom:var(--space-lg)">Composite Resilience Score</div>
+          <div id="crs-gauge" class="crs-gauge"></div>
+        </div>
+        <div class="card card--glow">
+          <div class="card-title" style="margin-bottom:var(--space-lg)">Maturity Radar</div>
+          <div id="maturity-radar"></div>
+        </div>
+      </div>
+
+      <!-- Alerts + Services Row -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Active Alerts</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-alert"/></svg>
+          </div>
+          <div id="active-alerts"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Service Health</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-service"/></svg>
+          </div>
+          <div id="service-status"></div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Event Timeline</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-clock"/></svg>
+        </div>
+        <div id="event-timeline"></div>
+      </div>
+    </div>
+
+    <!-- Chaos Lab Section -->
+    <div id="section-chaos" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Chaos Lab</h1>
+          <p class="page-subtitle">Controlled fault injection for resilience testing</p>
+        </div>
+        <button class="btn btn-danger" onclick="stopAllChaos()">
+          <svg><use href="#icon-alert"/></svg> Stop All Chaos
+        </button>
+      </div>
+
+      <div class="card-grid card-grid--2col">
+        <div class="card" style="cursor:pointer" onclick="startChaosExperiment('payment_provider_failure')">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-chaos)">
+              <svg><use href="#icon-chaos"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Payment Provider Failure</div>
+          <div class="card-description" style="margin-top:0.5rem">
+            Simulate primary payment provider outage. Tests circuit breakers and dependency substitution.
+          </div>
+          <div style="margin-top:0.75rem">
+            <span class="maturity-badge maturity-badge--l2">Absorption</span>
+          </div>
+        </div>
+
+        <div class="card" style="cursor:pointer" onclick="startChaosExperiment('order_service_latency')">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-chaos)">
+              <svg><use href="#icon-chaos"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Order Service Latency</div>
+          <div class="card-description" style="margin-top:0.5rem">
+            Inject latency into order service. Tests detection thresholds and auto-scaling.
+          </div>
+          <div style="margin-top:0.75rem">
+            <span class="maturity-badge maturity-badge--l3">Detection</span>
+          </div>
+        </div>
+
+        <div class="card" style="cursor:pointer" onclick="startChaosExperiment('inventory_degradation')">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-chaos)">
+              <svg><use href="#icon-chaos"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Inventory Degradation</div>
+          <div class="card-description" style="margin-top:0.5rem">
+            Force inventory errors to test graceful degradation tiers.
+          </div>
+          <div style="margin-top:0.75rem">
+            <span class="maturity-badge maturity-badge--l2">Adaptation</span>
+          </div>
+        </div>
+
+        <div class="card" style="cursor:pointer" onclick="startChaosExperiment('cascading_failure')">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-chaos)">
+              <svg><use href="#icon-chaos"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Cascading Failure</div>
+          <div class="card-description" style="margin-top:0.5rem">
+            Full AREF pipeline test: detection through evolution. The ultimate stress test.
+          </div>
+          <div style="margin-top:0.75rem">
+            <span class="maturity-badge maturity-badge--l1">All Pillars</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Placeholder for other sections -->
+    <div id="section-detection" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Detection</h1>
+          <p class="page-subtitle">Threshold monitors, anomaly detection, synthetic probes, SLI/SLO tracking</p>
+        </div>
+        <div class="header-actions">
+          <span id="detection-engine-status" class="header-badge badge-healthy">RUNNING</span>
+          <button class="btn btn-ghost" onclick="refreshDetection()">
+            <svg><use href="#icon-recovery"/></svg> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Alert Summary Cards -->
+      <div class="card-grid card-grid--4col" id="detection-summary-cards">
+        <div class="card" data-det-card="total">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-alert"/></svg>
+            </div>
+            <span class="metrics-kpi-target">Lifetime</span>
+          </div>
+          <div class="card-title">Total Alerts</div>
+          <div class="card-value" data-det-value="total">0</div>
+          <div class="card-description" data-det-sub="total">No alerts fired</div>
+        </div>
+        <div class="card" data-det-card="active">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-critical)">
+              <svg><use href="#icon-detection"/></svg>
+            </div>
+            <span class="metrics-kpi-target">Unresolved</span>
+          </div>
+          <div class="card-title">Active Alerts</div>
+          <div class="card-value" data-det-value="active">0</div>
+          <div class="card-description" data-det-sub="active">All clear</div>
+        </div>
+        <div class="card" data-det-card="weekly">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-warning)">
+              <svg><use href="#icon-clock"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-det-fatigue-label>Fatigue: < 50/wk</span>
+          </div>
+          <div class="card-title">This Week</div>
+          <div class="card-value" data-det-value="weekly">0</div>
+          <div class="metrics-kpi-bar">
+            <div class="progress-bar"><div class="progress-bar-fill" data-det-fatigue-fill style="width:0%;background:var(--color-warning)"></div></div>
+          </div>
+          <div class="card-description" data-det-sub="weekly">Alert fatigue monitor</div>
+        </div>
+        <div class="card" data-det-card="ratio">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15);color:var(--color-recovery)">
+              <svg><use href="#icon-healthy"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-det-ratio-label>Target: 3:1</span>
+          </div>
+          <div class="card-title">Alert-to-Action</div>
+          <div class="card-value" data-det-value="ratio">--</div>
+          <div class="card-description" data-det-sub="ratio">Signal-to-noise ratio</div>
+        </div>
+      </div>
+
+      <!-- Detection Subsystems -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+
+        <!-- Threshold Monitors -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Threshold Monitors</div>
+            <div class="det-subsystem-badge" id="det-threshold-badge">
+              <span class="metrics-kpi-target" data-det-threshold-count>0 rules</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Consecutive-sample confirmation against static thresholds</div>
+          <div id="det-threshold-container"></div>
+          <div class="det-subsystem-empty" id="det-threshold-empty">
+            <svg style="width:32px;height:32px;opacity:0.2;margin-bottom:var(--space-sm)"><use href="#icon-metrics"/></svg>
+            <div>No threshold rules configured</div>
+            <div class="metrics-kpi-target" style="margin-top:var(--space-xs)">Rules are added when services register metrics</div>
+          </div>
+        </div>
+
+        <!-- Anomaly Detection -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Anomaly Detection</div>
+            <div class="det-subsystem-badge" id="det-anomaly-badge">
+              <span class="metrics-kpi-target" data-det-anomaly-count>0 streams</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Z-score statistical analysis + Isolation Forest ML</div>
+          <div id="det-anomaly-container"></div>
+          <div class="det-subsystem-empty" id="det-anomaly-empty">
+            <svg style="width:32px;height:32px;opacity:0.2;margin-bottom:var(--space-sm)"><use href="#icon-evolution"/></svg>
+            <div>No metric streams registered</div>
+            <div class="metrics-kpi-target" style="margin-top:var(--space-xs)">Streams are registered when services emit time-series data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Synthetic Probes + SLI/SLO -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+
+        <!-- Synthetic Probes -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Synthetic Probes</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-det-probe-count>0 targets</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Active health checks against service endpoints</div>
+          <div id="det-synthetic-container"></div>
+          <div class="det-subsystem-empty" id="det-synthetic-empty">
+            <svg style="width:32px;height:32px;opacity:0.2;margin-bottom:var(--space-sm)"><use href="#icon-service"/></svg>
+            <div>No probe targets configured</div>
+            <div class="metrics-kpi-target" style="margin-top:var(--space-xs)">Probes target service health endpoints</div>
+          </div>
+        </div>
+
+        <!-- SLI/SLO Tracking -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">SLI/SLO Tracking</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-det-sli-count>0 SLIs / 0 SLOs</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Error budget management: EB = (1-SLO) - (t<sub>down</sub>/t<sub>window</sub>)</div>
+          <div id="det-sli-container"></div>
+          <div class="det-subsystem-empty" id="det-sli-empty">
+            <svg style="width:32px;height:32px;opacity:0.2;margin-bottom:var(--space-sm)"><use href="#icon-metrics"/></svg>
+            <div>No SLIs/SLOs defined</div>
+            <div class="metrics-kpi-target" style="margin-top:var(--space-xs)">SLIs are registered per-service for error budget tracking</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Alerts Table -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Active Alerts</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-alert"/></svg>
+        </div>
+        <div id="det-alerts-table"></div>
+      </div>
+
+      <!-- Detection Config -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Detection Configuration</div>
+          <span class="metrics-kpi-target">Blueprint Section 3.1</span>
+        </div>
+        <div id="det-config-grid" class="det-config-grid" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-absorption" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Absorption</h1>
+          <p class="page-subtitle">Pillar II — Contain failures, limit blast radius, degrade gracefully</p>
+        </div>
+        <span class="metrics-kpi-target">Blueprint Section 3.2</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-abs-card="breakers">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-absorption"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Circuit Breakers</div>
+          <div class="card-value" data-abs-value="breakers">--</div>
+          <div class="card-description" data-abs-sub="breakers">Total registered</div>
+        </div>
+        <div class="card" data-abs-card="open">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-critical)">
+              <svg><use href="#icon-alert"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Open Circuits</div>
+          <div class="card-value" data-abs-value="open">--</div>
+          <div class="card-description" data-abs-sub="open">Dependencies blocked</div>
+        </div>
+        <div class="card" data-abs-card="limiters">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-metrics"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Rate Limiters</div>
+          <div class="card-value" data-abs-value="limiters">--</div>
+          <div class="card-description" data-abs-sub="limiters">Token bucket instances</div>
+        </div>
+        <div class="card" data-abs-card="bulkheads">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15);color:var(--color-recovery)">
+              <svg><use href="#icon-service"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Bulkheads</div>
+          <div class="card-value" data-abs-value="bulkheads">--</div>
+          <div class="card-description" data-abs-sub="bulkheads">Resource partitions</div>
+        </div>
+      </div>
+
+      <!-- Circuit Breakers + Rate Limiters -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+
+        <!-- Circuit Breakers -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Circuit Breakers</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-abs-cb-count>0 breakers</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">State machine: CLOSED → OPEN → HALF_OPEN → CLOSED</div>
+          <div id="abs-cb-container"></div>
+        </div>
+
+        <!-- Rate Limiters -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Rate Limiters</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-abs-rl-count>0 limiters</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Token bucket algorithm — sustained rate with burst capacity</div>
+          <div id="abs-rl-container"></div>
+        </div>
+      </div>
+
+      <!-- Bulkheads + Degradation -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+
+        <!-- Bulkheads -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Bulkheads</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-abs-bh-count>0 partitions</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Semaphore-based resource partitioning per dependency</div>
+          <div id="abs-bh-container"></div>
+        </div>
+
+        <!-- Degradation -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Graceful Degradation</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-abs-deg-count>0 services</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Tiered degradation: Full → Reduced → Minimal → Emergency</div>
+          <div id="abs-deg-container"></div>
+        </div>
+      </div>
+
+      <!-- Blast Radius Dependency Map -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Blast Radius — Dependency Map</div>
+          <span class="metrics-kpi-target">Containment target: &gt;95%</span>
+        </div>
+        <div class="card-description" style="margin-bottom:var(--space-md)">Service dependency graph with failure mode annotations</div>
+        <div id="abs-blast-container"></div>
+      </div>
+
+      <!-- Absorption Config -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Absorption Configuration</div>
+          <span class="metrics-kpi-target">Blueprint Section 3.2</span>
+        </div>
+        <div id="abs-config-grid" class="det-config-grid" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-adaptation" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Adaptation</h1>
+          <p class="page-subtitle">Pillar III — Auto-scaling, traffic shifting, feature flags, decision tree</p>
+        </div>
+        <span class="metrics-kpi-target">Blueprint Section 3.3</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-adp-card="active">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-adaptation"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Active Adaptations</div>
+          <div class="card-value" data-adp-value="active">--</div>
+          <div class="card-description" data-adp-sub="active">Currently executing</div>
+        </div>
+        <div class="card" data-adp-card="total">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-metrics"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Total Adaptations</div>
+          <div class="card-value" data-adp-value="total">--</div>
+          <div class="card-description" data-adp-sub="total">Historical actions</div>
+        </div>
+        <div class="card" data-adp-card="flags">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-detection"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Feature Flags</div>
+          <div class="card-value" data-adp-value="flags">--</div>
+          <div class="card-description" data-adp-sub="flags">Registered flags</div>
+        </div>
+        <div class="card" data-adp-card="instances">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15);color:var(--color-recovery)">
+              <svg><use href="#icon-service"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Service Instances</div>
+          <div class="card-value" data-adp-value="instances">--</div>
+          <div class="card-description" data-adp-sub="instances">Running containers</div>
+        </div>
+      </div>
+
+      <!-- Feature Flags + Auto-Scaler -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Feature Flags</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-adp-ff-count>0 flags</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Load shedding via flag toggling — critical flags are protected</div>
+          <div id="adp-ff-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Auto-Scaler</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-adp-sc-count>0 services</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Horizontal scaling with min/max instance bounds</div>
+          <div id="adp-sc-container"></div>
+        </div>
+      </div>
+
+      <!-- Traffic Shifter + Decision Tree Strategies -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Traffic Routing</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-adp-ts-count>0 services</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Weighted traffic distribution across primary/backup targets</div>
+          <div id="adp-ts-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Decision Tree Strategies</div>
+            <span class="metrics-kpi-target">Blueprint 3.3.2</span>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Minimum-impact strategy selection by anomaly class</div>
+          <div id="adp-dt-container"></div>
+        </div>
+      </div>
+
+      <!-- Adaptation History -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Adaptation History</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-adaptation"/></svg>
+        </div>
+        <div id="adp-history-table"></div>
+      </div>
+
+      <!-- Adaptation Config -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Adaptation Configuration</div>
+          <span class="metrics-kpi-target">Blueprint Section 3.3</span>
+        </div>
+        <div id="adp-config-grid" class="det-config-grid" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-recovery" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Recovery</h1>
+          <p class="page-subtitle">Pillar IV — T0-T4 tiered recovery, runbook execution, incident coordination</p>
+        </div>
+        <span class="metrics-kpi-target">Blueprint Section 3.4</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-rec-card="active">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15);color:var(--color-recovery)">
+              <svg><use href="#icon-recovery"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Active Recoveries</div>
+          <div class="card-value" data-rec-value="active">--</div>
+          <div class="card-description" data-rec-sub="active">In progress</div>
+        </div>
+        <div class="card" data-rec-card="total">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-metrics"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Total Recovered</div>
+          <div class="card-value" data-rec-value="total">--</div>
+          <div class="card-description" data-rec-sub="total">Resolved incidents</div>
+        </div>
+        <div class="card" data-rec-card="runbooks">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-detection"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Runbooks</div>
+          <div class="card-value" data-rec-value="runbooks">--</div>
+          <div class="card-description" data-rec-sub="runbooks">Defined playbooks</div>
+        </div>
+        <div class="card" data-rec-card="executions">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-adaptation"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Executions</div>
+          <div class="card-value" data-rec-value="executions">--</div>
+          <div class="card-description" data-rec-sub="executions">Runbook runs</div>
+        </div>
+      </div>
+
+      <!-- Recovery Tiers -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Recovery Tiers — T0 through T4</div>
+          <span class="metrics-kpi-target">MTTR target: &lt;15 min</span>
+        </div>
+        <div class="card-description" style="margin-bottom:var(--space-md)">Progressive escalation from automated stabilization to post-incident hardening</div>
+        <div id="rec-tiers-container"></div>
+      </div>
+
+      <!-- Runbook Catalog + Active Recoveries -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Runbook Catalog</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-rec-rb-count>0 runbooks</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Executable, version-controlled recovery playbooks per tier</div>
+          <div id="rec-runbooks-container"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Active Recoveries</div>
+            <div class="det-subsystem-badge">
+              <span class="metrics-kpi-target" data-rec-active-count>0 active</span>
+            </div>
+          </div>
+          <div class="card-description" style="margin-bottom:var(--space-md)">Currently executing incident recovery processes</div>
+          <div id="rec-active-container"></div>
+        </div>
+      </div>
+
+      <!-- Execution History -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Runbook Execution History</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-recovery"/></svg>
+        </div>
+        <div id="rec-exec-table"></div>
+      </div>
+
+      <!-- Recovery Config -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Recovery Configuration</div>
+          <span class="metrics-kpi-target">Blueprint Section 3.4</span>
+        </div>
+        <div id="rec-config-grid" class="det-config-grid" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-evolution" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Evolution</h1>
+          <p class="page-subtitle">Pillar V — Post-incident learning, action tracking, pattern matching</p>
+        </div>
+        <span class="metrics-kpi-target">Blueprint Section 3.5</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-evo-card="reviews">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(34,197,94,0.15);color:var(--color-evolution)">
+              <svg><use href="#icon-evolution"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Post-Incident Reviews</div>
+          <div class="card-value" data-evo-value="reviews">--</div>
+          <div class="card-description" data-evo-sub="reviews">Total reviews generated</div>
+        </div>
+        <div class="card" data-evo-card="actions">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(56,189,248,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-healthy"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Action Items</div>
+          <div class="card-value" data-evo-value="actions">--</div>
+          <div class="card-description" data-evo-sub="actions">Open / Completed</div>
+        </div>
+        <div class="card" data-evo-card="patterns">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(251,191,36,0.15);color:var(--color-warning)">
+              <svg><use href="#icon-alert"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Known Patterns</div>
+          <div class="card-value" data-evo-value="patterns">--</div>
+          <div class="card-description" data-evo-sub="patterns">Recurrence rate</div>
+        </div>
+        <div class="card" data-evo-card="kb">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-service"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Knowledge Base</div>
+          <div class="card-value" data-evo-value="kb">--</div>
+          <div class="card-description" data-evo-sub="kb">Stored incident entries</div>
+        </div>
+      </div>
+
+      <!-- Review Process Pipeline -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Blameless Review Process</div>
+          <span class="metrics-kpi-target">6-Step Post-Incident Review</span>
+        </div>
+        <div id="evo-review-process" style="margin-top:var(--space-md)"></div>
+      </div>
+
+      <!-- Two-column: Improvement Velocity + Action Items by Pillar -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Improvement Velocity</div>
+            <span class="metrics-kpi-target">Target: >8 actions/quarter, >85% completion</span>
+          </div>
+          <div id="evo-velocity" style="margin-top:var(--space-md)"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Actions by Pillar</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-metrics"/></svg>
+          </div>
+          <div id="evo-by-pillar" style="margin-top:var(--space-md)"></div>
+        </div>
+      </div>
+
+      <!-- Two-column: Post-Incident Reviews + Known Patterns -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Post-Incident Reviews</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-evolution"/></svg>
+          </div>
+          <div id="evo-reviews-list" style="margin-top:var(--space-md)"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Incident Patterns</div>
+            <span class="metrics-kpi-target">Recurrence target: &lt;10%</span>
+          </div>
+          <div id="evo-patterns-list" style="margin-top:var(--space-md)"></div>
+        </div>
+      </div>
+
+      <!-- Action Items Table -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Action Items</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-healthy"/></svg>
+        </div>
+        <div id="evo-actions-table" style="margin-top:var(--space-md)"></div>
+      </div>
+
+      <!-- Knowledge Base -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Knowledge Base</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-service"/></svg>
+        </div>
+        <div id="evo-kb-list" style="margin-top:var(--space-md)"></div>
+      </div>
+
+      <!-- Config -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Evolution Configuration</div>
+          <span class="metrics-kpi-target">Blueprint Section 3.5</span>
+        </div>
+        <div id="evo-config-grid" class="det-config-grid" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-services" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Services</h1>
+          <p class="page-subtitle">Microservice health, dependency map, and resilience posture</p>
+        </div>
+        <span class="metrics-kpi-target">5 Services + 2 Infrastructure</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-svc-card="total">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(56,189,248,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-service"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Total Services</div>
+          <div class="card-value" data-svc-value="total">--</div>
+          <div class="card-description" data-svc-sub="total">Registered microservices</div>
+        </div>
+        <div class="card" data-svc-card="healthy">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(34,197,94,0.15);color:var(--color-evolution)">
+              <svg><use href="#icon-healthy"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Healthy</div>
+          <div class="card-value" data-svc-value="healthy">--</div>
+          <div class="card-description" data-svc-sub="healthy">Passing health checks</div>
+        </div>
+        <div class="card" data-svc-card="breakers">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-absorption"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Circuit Breakers</div>
+          <div class="card-value" data-svc-value="breakers">--</div>
+          <div class="card-description" data-svc-sub="breakers">Across all services</div>
+        </div>
+        <div class="card" data-svc-card="instances">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-adaptation"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Total Instances</div>
+          <div class="card-value" data-svc-value="instances">--</div>
+          <div class="card-description" data-svc-sub="instances">Running instances</div>
+        </div>
+      </div>
+
+      <!-- Dependency Map -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Dependency Map</div>
+          <span class="metrics-kpi-target">Service topology and connections</span>
+        </div>
+        <div id="svc-dep-map" style="margin-top:var(--space-md)"></div>
+      </div>
+
+      <!-- Service Detail Cards -->
+      <div id="svc-detail-cards" style="margin-top:var(--space-xl)"></div>
+
+      <!-- Infrastructure -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Infrastructure Dependencies</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-service"/></svg>
+        </div>
+        <div id="svc-infra" style="margin-top:var(--space-md)"></div>
+      </div>
+
+      <!-- Rate Limiters -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Rate Limiters</div>
+          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-metrics"/></svg>
+        </div>
+        <div id="svc-rate-limiters" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+    <div id="section-metrics" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Metrics</h1>
+          <p class="page-subtitle">MTTD, MTTR, Availability, Error Budgets, CRS</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-ghost" onclick="refreshMetrics()">
+            <svg><use href="#icon-recovery"/></svg> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards Row -->
+      <div class="card-grid card-grid--4col" id="metrics-kpi-cards">
+        <div class="card metrics-kpi" data-kpi="mttd">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-detection"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-target-label>Target: < 300s</span>
+          </div>
+          <div class="card-title">Mean Time to Detect</div>
+          <div class="card-value metrics-kpi-value" data-kpi-value>--</div>
+          <div class="metrics-kpi-bar">
+            <div class="progress-bar"><div class="progress-bar-fill" data-kpi-fill style="width:0%;background:var(--color-detection)"></div></div>
+          </div>
+          <div class="card-description" data-kpi-status>No incidents recorded</div>
+        </div>
+
+        <div class="card metrics-kpi" data-kpi="mttr">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15);color:var(--color-recovery)">
+              <svg><use href="#icon-recovery"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-target-label>Target: < 900s</span>
+          </div>
+          <div class="card-title">Mean Time to Recover</div>
+          <div class="card-value metrics-kpi-value" data-kpi-value>--</div>
+          <div class="metrics-kpi-bar">
+            <div class="progress-bar"><div class="progress-bar-fill" data-kpi-fill style="width:0%;background:var(--color-recovery)"></div></div>
+          </div>
+          <div class="card-description" data-kpi-status>No incidents recovered</div>
+        </div>
+
+        <div class="card metrics-kpi" data-kpi="availability">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(56,189,248,0.15);color:var(--text-accent)">
+              <svg><use href="#icon-healthy"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-target-label>SLO: 99.9%</span>
+          </div>
+          <div class="card-title">Availability</div>
+          <div class="card-value metrics-kpi-value" data-kpi-value>--</div>
+          <div class="metrics-kpi-bar">
+            <div class="progress-bar"><div class="progress-bar-fill" data-kpi-fill style="width:0%;background:var(--text-accent)"></div></div>
+          </div>
+          <div class="card-description" data-kpi-status>Awaiting data</div>
+        </div>
+
+        <div class="card metrics-kpi" data-kpi="incidents">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-alert"/></svg>
+            </div>
+            <span class="metrics-kpi-target" data-target-label>Lifetime</span>
+          </div>
+          <div class="card-title">Total Incidents</div>
+          <div class="card-value metrics-kpi-value" data-kpi-value>0</div>
+          <div class="metrics-kpi-bar">
+            <div class="progress-bar"><div class="progress-bar-fill" data-kpi-fill style="width:0%;background:var(--color-adaptation)"></div></div>
+          </div>
+          <div class="card-description" data-kpi-status>Across all services</div>
+        </div>
+      </div>
+
+      <!-- Error Budgets + CRS Row -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <!-- Error Budgets -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Error Budgets</div>
+            <span class="metrics-kpi-target">30-day rolling window</span>
+          </div>
+          <div id="error-budgets-container" style="margin-top:var(--space-md)"></div>
+        </div>
+
+        <!-- CRS by Risk Profile -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">CRS by Risk Profile</div>
+            <span class="metrics-kpi-target">CRS = &Sigma;(w<sub>i</sub> &middot; M<sub>i</sub>)</span>
+          </div>
+          <div id="crs-profiles-container" style="margin-top:var(--space-md)"></div>
+        </div>
+      </div>
+
+      <!-- Weight Distribution + Pillar Scores Row -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <!-- Weight Distribution SVG -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Weight Distribution</div>
+            <span class="metrics-kpi-target" id="active-profile-label">balanced</span>
+          </div>
+          <div id="weight-distribution-chart" style="margin-top:var(--space-md)"></div>
+        </div>
+
+        <!-- Pillar Score Breakdown -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Pillar Scores</div>
+            <span class="metrics-kpi-target">Current maturity levels</span>
+          </div>
+          <div id="pillar-scores-detail" style="margin-top:var(--space-md)"></div>
+        </div>
+      </div>
+    </div>
+    <div id="section-timeline" class="page-section" style="display:none">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Event Timeline</h1>
+          <p class="page-subtitle">Chronological event feed across all AREF pillars</p>
+        </div>
+        <span class="metrics-kpi-target" data-tl-total>0 events</span>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="card-grid card-grid--4col" style="margin-top:var(--space-xl)">
+        <div class="card" data-tl-card="total">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(56,189,248,0.15);color:var(--color-detection)">
+              <svg><use href="#icon-clock"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Total Events</div>
+          <div class="card-value" data-tl-value="total">--</div>
+          <div class="card-description" data-tl-sub="total">In event bus history</div>
+        </div>
+        <div class="card" data-tl-card="categories">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15);color:var(--color-absorption)">
+              <svg><use href="#icon-dashboard"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Categories</div>
+          <div class="card-value" data-tl-value="categories">--</div>
+          <div class="card-description" data-tl-sub="categories">Distinct event categories</div>
+        </div>
+        <div class="card" data-tl-card="sources">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15);color:var(--color-adaptation)">
+              <svg><use href="#icon-service"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Sources</div>
+          <div class="card-value" data-tl-value="sources">--</div>
+          <div class="card-description" data-tl-sub="sources">Distinct event sources</div>
+        </div>
+        <div class="card" data-tl-card="warnings">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,0.15);color:var(--color-critical)">
+              <svg><use href="#icon-alert"/></svg>
+            </div>
+          </div>
+          <div class="card-title">Warnings+</div>
+          <div class="card-value" data-tl-value="warnings">--</div>
+          <div class="card-description" data-tl-sub="warnings">Warning / Critical / Emergency</div>
+        </div>
+      </div>
+
+      <!-- Two-column: Category Breakdown + Severity Breakdown -->
+      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Events by Category</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-dashboard"/></svg>
+          </div>
+          <div id="tl-by-category" style="margin-top:var(--space-md)"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Events by Severity</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-alert"/></svg>
+          </div>
+          <div id="tl-by-severity" style="margin-top:var(--space-md)"></div>
+        </div>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card" style="margin-top:var(--space-xl)">
+        <div class="card-header">
+          <div class="card-title">Event Feed</div>
+          <div class="tl-filters" id="tl-filter-bar"></div>
+        </div>
+        <div id="tl-event-feed" style="margin-top:var(--space-md)"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
