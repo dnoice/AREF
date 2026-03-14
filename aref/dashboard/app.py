@@ -105,6 +105,7 @@ from aref.core.config import get_config
 from aref.core.events import Event, EventCategory, EventSeverity, get_event_bus
 from aref.core.logging import setup_logging
 from aref.core.metrics import get_metrics_engine
+from aref.dashboard.engines import get_engines
 
 from aref.detection.engine import DetectionEngine
 from aref.detection.threshold import ThresholdRule
@@ -134,48 +135,32 @@ logger = structlog.get_logger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
-# Engine instances
-detection_engine: DetectionEngine | None = None
-adaptation_engine: AdaptationEngine | None = None
-recovery_engine: RecoveryEngine | None = None
-evolution_engine: EvolutionEngine | None = None
-fault_injector: FaultInjector | None = None
-experiment_runner: ExperimentRunner | None = None
-maturity_assessor: MaturityAssessor | None = None
-rate_limiter_mgr: RateLimiterManager | None = None
-bulkhead_mgr: BulkheadManager | None = None
-blast_radius: BlastRadiusAnalyzer | None = None
-degradation_mgr: DegradationManager | None = None
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    global detection_engine, adaptation_engine, recovery_engine, evolution_engine
-    global fault_injector, experiment_runner, maturity_assessor
-    global rate_limiter_mgr, bulkhead_mgr, blast_radius, degradation_mgr
+    e = get_engines()
 
     config = get_config()
     setup_logging(level=config.log_level)
     bus = get_event_bus()
 
     # Initialize engines
-    detection_engine = DetectionEngine(bus)
-    adaptation_engine = AdaptationEngine(bus)
-    recovery_engine = RecoveryEngine(bus)
-    evolution_engine = EvolutionEngine(bus)
-    fault_injector = FaultInjector()
-    experiment_runner = ExperimentRunner(fault_injector)
-    maturity_assessor = MaturityAssessor()
-    rate_limiter_mgr = RateLimiterManager()
-    bulkhead_mgr = BulkheadManager()
-    blast_radius = BlastRadiusAnalyzer()
-    degradation_mgr = DegradationManager()
+    e.detection_engine = DetectionEngine(bus)
+    e.adaptation_engine = AdaptationEngine(bus)
+    e.recovery_engine = RecoveryEngine(bus)
+    e.evolution_engine = EvolutionEngine(bus)
+    e.fault_injector = FaultInjector()
+    e.experiment_runner = ExperimentRunner(e.fault_injector)
+    e.maturity_assessor = MaturityAssessor()
+    e.rate_limiter_mgr = RateLimiterManager()
+    e.bulkhead_mgr = BulkheadManager()
+    e.blast_radius = BlastRadiusAnalyzer()
+    e.degradation_mgr = DegradationManager()
 
     # Start engines
-    await detection_engine.start()
-    await adaptation_engine.start()
-    await recovery_engine.start()
-    await evolution_engine.start()
+    await e.detection_engine.start()
+    await e.adaptation_engine.start()
+    await e.recovery_engine.start()
+    await e.evolution_engine.start()
 
     # ----- Wire up detection subsystems with live data -----
     _docker = os.environ.get("AREF_ENVIRONMENT") == "docker"
@@ -194,7 +179,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 1) Synthetic probes — active health checks against every service
     for name, base_url in services.items():
-        detection_engine.synthetic.add_target(
+        e.detection_engine.synthetic.add_target(
             ProbeTarget(service=name, url=f"{base_url}/health", timeout=5.0)
         )
 
@@ -203,31 +188,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Availability SLI
         avail_sli = SLI(name="availability", service=name, unit="ratio",
                         description=f"{name} availability ratio")
-        detection_engine.sli_tracker.register_sli(avail_sli)
+        e.detection_engine.sli_tracker.register_sli(avail_sli)
 
         avail_slo = SLO(name="availability", sli_name="availability",
                         service=name, target=0.999,
                         description=f"{name} 99.9% availability SLO")
-        detection_engine.sli_tracker.register_slo(avail_slo)
+        e.detection_engine.sli_tracker.register_slo(avail_slo)
 
         # Latency SLI
         lat_sli = SLI(name="latency_p99", service=name, unit="ms",
                        description=f"{name} p99 latency")
-        detection_engine.sli_tracker.register_sli(lat_sli)
+        e.detection_engine.sli_tracker.register_sli(lat_sli)
 
         lat_slo = SLO(name="latency_p99", sli_name="latency_p99",
                        service=name, target=0.995,
                        description=f"{name} latency SLO (p99 < 500ms)")
-        detection_engine.sli_tracker.register_slo(lat_slo)
+        e.detection_engine.sli_tracker.register_slo(lat_slo)
 
     # 3) Anomaly metric streams — latency and error rate per service
     for name in services:
-        detection_engine.anomaly.register_stream(
+        e.detection_engine.anomaly.register_stream(
             MetricStream(name="response_latency", service=name,
                          window_size=100, z_score_threshold=3.0,
                          description=f"{name} response latency (ms)")
         )
-        detection_engine.anomaly.register_stream(
+        e.detection_engine.anomaly.register_stream(
             MetricStream(name="error_rate", service=name,
                          window_size=100, z_score_threshold=3.0,
                          description=f"{name} error rate (pct)")
@@ -239,7 +224,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     for name in services:
         # Error rate threshold
         _err_key = f"{name}.error_rate"
-        detection_engine.threshold.add_rule(ThresholdRule(
+        e.detection_engine.threshold.add_rule(ThresholdRule(
             name=f"{name}_error_rate",
             service=name,
             metric_fn=lambda k=_err_key: _live_metrics.get(k),
@@ -251,7 +236,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Latency threshold
         _lat_key = f"{name}.latency"
-        detection_engine.threshold.add_rule(ThresholdRule(
+        e.detection_engine.threshold.add_rule(ThresholdRule(
             name=f"{name}_latency",
             service=name,
             metric_fn=lambda k=_lat_key: _live_metrics.get(k),
@@ -285,23 +270,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         _live_metrics[f"{name}.error_rate"] = error_rate
 
                         # Feed anomaly streams
-                        detection_engine.anomaly.record(name, "response_latency", latency_ms)
-                        detection_engine.anomaly.record(name, "error_rate", error_rate)
+                        e.detection_engine.anomaly.record(name, "response_latency", latency_ms)
+                        e.detection_engine.anomaly.record(name, "error_rate", error_rate)
 
                         # Feed SLI tracker
-                        detection_engine.sli_tracker.record_sli(
+                        e.detection_engine.sli_tracker.record_sli(
                             name, "availability", 1.0 if healthy else 0.0
                         )
-                        detection_engine.sli_tracker.record_sli(
+                        e.detection_engine.sli_tracker.record_sli(
                             name, "latency_p99", latency_ms
                         )
 
                         # Record downtime if unhealthy (probe interval worth)
                         if not healthy:
-                            detection_engine.sli_tracker.record_downtime(
+                            e.detection_engine.sli_tracker.record_downtime(
                                 name, "availability", 10.0
                             )
-                            detection_engine.sli_tracker.record_downtime(
+                            e.detection_engine.sli_tracker.record_downtime(
                                 name, "latency_p99", 10.0
                             )
 
@@ -309,10 +294,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         # Service unreachable — record as error
                         _live_metrics[f"{name}.latency"] = 5000.0
                         _live_metrics[f"{name}.error_rate"] = 100.0
-                        detection_engine.anomaly.record(name, "response_latency", 5000.0)
-                        detection_engine.anomaly.record(name, "error_rate", 100.0)
-                        detection_engine.sli_tracker.record_sli(name, "availability", 0.0)
-                        detection_engine.sli_tracker.record_downtime(name, "availability", 10.0)
+                        e.detection_engine.anomaly.record(name, "response_latency", 5000.0)
+                        e.detection_engine.anomaly.record(name, "error_rate", 100.0)
+                        e.detection_engine.sli_tracker.record_sli(name, "availability", 0.0)
+                        e.detection_engine.sli_tracker.record_downtime(name, "availability", 10.0)
 
                 await asyncio.sleep(10)  # poll every 10 seconds
 
@@ -343,7 +328,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Rate limiters — per service
     for svc_name in services:
-        rate_limiter_mgr.create(
+        e.rate_limiter_mgr.create(
             name=svc_name,
             rate=config.absorption.rate_limit_requests_per_second,
             capacity=config.absorption.rate_limit_burst,
@@ -351,7 +336,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Bulkheads — per service
     for svc_name in services:
-        bulkhead_mgr.create(
+        e.bulkhead_mgr.create(
             name=svc_name,
             max_concurrent=config.absorption.bulkhead_max_concurrent,
         )
@@ -362,7 +347,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         "redis": ("cache", "high"),
     }
     for svc_name in services:
-        blast_radius.register_node(DependencyNode(
+        e.blast_radius.register_node(DependencyNode(
             name=svc_name,
             node_type="service",
             criticality="critical" if svc_name == "gateway" else "high",
@@ -370,7 +355,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             degradation_tiers=["full", "reduced", "minimal", "emergency"],
         ))
     for infra_name, (ntype, crit) in infra_nodes.items():
-        blast_radius.register_node(DependencyNode(
+        e.blast_radius.register_node(DependencyNode(
             name=infra_name,
             node_type=ntype,
             criticality=crit,
@@ -378,7 +363,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ))
     for svc, deps in service_deps.items():
         for dep in deps:
-            blast_radius.register_dependency(svc, dep)
+            e.blast_radius.register_dependency(svc, dep)
 
     # Degradation tiers — per service
     for svc_name in services:
@@ -401,7 +386,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                                 reduced_capacity_pct=10.0),
             ],
         )
-        degradation_mgr.register_service(svc_deg)
+        e.degradation_mgr.register_service(svc_deg)
 
     # ----- Wire up adaptation subsystems with live data -----
 
@@ -416,7 +401,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     ]
     for svc_name in services:
         for flag_name, critical, desc in flag_defs:
-            adaptation_engine.feature_flags.register(FeatureFlag(
+            e.adaptation_engine.feature_flags.register(FeatureFlag(
                 name=f"{svc_name}.{flag_name}",
                 service=svc_name,
                 enabled=True,
@@ -426,20 +411,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Traffic routes — primary + backup per service
     for svc_name in services:
-        adaptation_engine.traffic_shifter.register_routes(svc_name, [
+        e.adaptation_engine.traffic_shifter.register_routes(svc_name, [
             TrafficRoute(target=f"{svc_name}-primary", weight=100, healthy=True),
             TrafficRoute(target=f"{svc_name}-backup", weight=0, healthy=True),
         ])
 
     # Auto-scaler — instance counts per service
     for svc_name in services:
-        adaptation_engine.scaler.register_service(
+        e.adaptation_engine.scaler.register_service(
             service=svc_name, current=1, min_instances=1, max_instances=10,
         )
 
     # Load evolution seed data (patterns, KB entries, reviews, action items)
     from aref.dashboard.seed_data import load_seed_data
-    await load_seed_data(evolution_engine)
+    await load_seed_data(e.evolution_engine)
 
     logger.info("aref.platform.started", version="2.0.0")
 
@@ -449,10 +434,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _feed_task.cancel()
 
     # Shutdown
-    await detection_engine.stop()
-    await adaptation_engine.stop()
-    await recovery_engine.stop()
-    await evolution_engine.stop()
+    await e.detection_engine.stop()
+    await e.adaptation_engine.stop()
+    await e.recovery_engine.stop()
+    await e.evolution_engine.stop()
 
     logger.info("aref.platform.stopped")
 
@@ -492,6 +477,7 @@ async def dashboard():
 @app.get("/api/aref/status")
 async def get_status() -> dict[str, Any]:
     """Aggregate status across all AREF pillars."""
+    e = get_engines()
     config = get_config()
 
     pillar_scores = {
@@ -503,16 +489,16 @@ async def get_status() -> dict[str, Any]:
     }
 
     # If engines are running, get real data
-    if detection_engine:
-        alert_stats = detection_engine.get_alert_stats()
+    if e.detection_engine:
+        alert_stats = e.detection_engine.get_alert_stats()
         pillar_scores["detection"] = min(5.0, 2.0 + (1.0 if alert_stats["total_alerts"] > 0 else 0))
 
-    if recovery_engine:
-        rec_status = recovery_engine.get_status()
+    if e.recovery_engine:
+        rec_status = e.recovery_engine.get_status()
         pillar_scores["recovery"] = min(5.0, 2.0 + (1.0 if rec_status["total_recovered"] > 0 else 0))
 
-    if evolution_engine:
-        evo_status = evolution_engine.get_status()
+    if e.evolution_engine:
+        evo_status = e.evolution_engine.get_status()
         pillar_scores["evolution"] = min(5.0, 1.5 + (1.0 if evo_status["total_reviews"] > 0 else 0))
 
     crs = sum(
@@ -525,7 +511,7 @@ async def get_status() -> dict[str, Any]:
         "risk_profile": config.risk_profile.value,
         "pillars": pillar_scores,
         "maturity": {p: int(s) for p, s in pillar_scores.items()},
-        "chaos_active": bool(fault_injector and fault_injector.get_active()),
+        "chaos_active": bool(e.fault_injector and e.fault_injector.get_active()),
         "timestamp": time.time(),
     }
 
@@ -533,6 +519,7 @@ async def get_status() -> dict[str, Any]:
 @app.get("/api/aref/services")
 async def get_services() -> dict[str, Any]:
     """Get health of all microservices with enriched dependency and resilience data."""
+    e = get_engines()
     import os
     import httpx
     _docker = os.environ.get("AREF_ENVIRONMENT") == "docker"
@@ -564,7 +551,7 @@ async def get_services() -> dict[str, Any]:
             }
 
     # Enrich with dependency graph from blast radius analyzer
-    blast_analyzer = blast_radius
+    blast_analyzer = e.blast_radius
     dep_graph = {}
     if blast_analyzer:
         for node_name, node in blast_analyzer._nodes.items():
@@ -594,8 +581,8 @@ async def get_services() -> dict[str, Any]:
 
     # Degradation levels per service
     svc_degradation = {}
-    if degradation_mgr:
-        for svc_name, svc_deg in degradation_mgr._services.items():
+    if e.degradation_mgr:
+        for svc_name, svc_deg in e.degradation_mgr._services.items():
             svc_degradation[svc_name] = {
                 "current_level": svc_deg.current_level.name.lower(),
                 "tiers": len(svc_deg.tiers),
@@ -603,8 +590,8 @@ async def get_services() -> dict[str, Any]:
 
     # Rate limiters per service
     svc_rate_limiters = {}
-    if rate_limiter_mgr:
-        for rl_name, rl in rate_limiter_mgr._limiters.items():
+    if e.rate_limiter_mgr:
+        for rl_name, rl in e.rate_limiter_mgr._limiters.items():
             svc_rate_limiters[rl_name] = {
                 "rate": rl.rate,
                 "capacity": rl.capacity,
@@ -613,9 +600,9 @@ async def get_services() -> dict[str, Any]:
 
     # Auto-scaler instances
     svc_instances = {}
-    if adaptation_engine:
+    if e.adaptation_engine:
         for svc_name in results:
-            svc_instances[svc_name] = adaptation_engine.scaler.get_instances(svc_name)
+            svc_instances[svc_name] = e.adaptation_engine.scaler.get_instances(svc_name)
 
     return {
         "services": results,
@@ -633,10 +620,11 @@ async def get_services() -> dict[str, Any]:
 
 @app.get("/api/aref/alerts")
 async def get_alerts() -> dict[str, Any]:
-    if detection_engine:
+    e = get_engines()
+    if e.detection_engine:
         return {
-            "alerts": detection_engine.get_active_alerts(),
-            "stats": detection_engine.get_alert_stats(),
+            "alerts": e.detection_engine.get_active_alerts(),
+            "stats": e.detection_engine.get_alert_stats(),
         }
     return {"alerts": [], "stats": {}}
 
@@ -675,17 +663,18 @@ async def get_timeline() -> dict[str, Any]:
 
 @app.get("/api/aref/detection")
 async def get_detection_status() -> dict[str, Any]:
-    if not detection_engine:
+    e = get_engines()
+    if not e.detection_engine:
         return {"status": "not_running"}
     config = get_config().detection
     return {
-        "status": "running" if detection_engine._running else "stopped",
-        "alerts": detection_engine.get_alert_stats(),
-        "active_alerts": detection_engine.get_active_alerts(),
-        "threshold": detection_engine.threshold.get_status(),
-        "anomaly": detection_engine.anomaly.get_stream_stats(),
-        "synthetic": detection_engine.synthetic.get_status(),
-        "sli_tracker": detection_engine.sli_tracker.get_summary(),
+        "status": "running" if e.detection_engine._running else "stopped",
+        "alerts": e.detection_engine.get_alert_stats(),
+        "active_alerts": e.detection_engine.get_active_alerts(),
+        "threshold": e.detection_engine.threshold.get_status(),
+        "anomaly": e.detection_engine.anomaly.get_stream_stats(),
+        "synthetic": e.detection_engine.synthetic.get_status(),
+        "sli_tracker": e.detection_engine.sli_tracker.get_summary(),
         "config": {
             "mttd_target": config.mttd_target_seconds,
             "threshold_interval": config.threshold_check_interval,
@@ -700,15 +689,16 @@ async def get_detection_status() -> dict[str, Any]:
 
 @app.get("/api/aref/absorption")
 async def get_absorption_status() -> dict[str, Any]:
+    e = get_engines()
     config = get_config().absorption
     registry = get_circuit_breaker_registry()
     return {
         "circuit_breakers": registry.get_status(),
-        "rate_limiters": rate_limiter_mgr.get_status() if rate_limiter_mgr else {},
-        "bulkheads": bulkhead_mgr.get_status() if bulkhead_mgr else {},
-        "blast_radius": blast_radius.get_dependency_map() if blast_radius else {},
-        "blast_radius_assessments": blast_radius.get_assessments() if blast_radius else [],
-        "degradation": degradation_mgr.get_status() if degradation_mgr else {},
+        "rate_limiters": e.rate_limiter_mgr.get_status() if e.rate_limiter_mgr else {},
+        "bulkheads": e.bulkhead_mgr.get_status() if e.bulkhead_mgr else {},
+        "blast_radius": e.blast_radius.get_dependency_map() if e.blast_radius else {},
+        "blast_radius_assessments": e.blast_radius.get_assessments() if e.blast_radius else [],
+        "degradation": e.degradation_mgr.get_status() if e.degradation_mgr else {},
         "config": {
             "blast_radius_target_pct": config.blast_radius_target_pct,
             "circuit_breaker_failure_threshold": config.circuit_breaker_failure_threshold,
@@ -722,13 +712,14 @@ async def get_absorption_status() -> dict[str, Any]:
 
 @app.get("/api/aref/adaptation")
 async def get_adaptation_status() -> dict[str, Any]:
-    if not adaptation_engine:
+    e = get_engines()
+    if not e.adaptation_engine:
         return {"status": "not_running"}
     config = get_config().adaptation
-    base = adaptation_engine.get_status()
-    base["scaler"] = adaptation_engine.scaler.get_status()
+    base = e.adaptation_engine.get_status()
+    base["scaler"] = e.adaptation_engine.scaler.get_status()
     base["decision_tree_strategies"] = STRATEGY_RISK
-    base["adaptation_history"] = adaptation_engine._history[-30:]
+    base["adaptation_history"] = e.adaptation_engine._history[-30:]
     base["config"] = {
         "latency_target": config.latency_target_seconds,
         "scale_up_cpu": config.scale_up_cpu_threshold,
@@ -742,14 +733,15 @@ async def get_adaptation_status() -> dict[str, Any]:
 
 @app.get("/api/aref/recovery")
 async def get_recovery_status() -> dict[str, Any]:
-    if not recovery_engine:
+    e = get_engines()
+    if not e.recovery_engine:
         return {"status": "not_running"}
     config = get_config().recovery
-    base = recovery_engine.get_status()
+    base = e.recovery_engine.get_status()
 
     # Runbook catalog
     runbooks = []
-    for rb in recovery_engine.runbook_executor._runbooks:
+    for rb in e.recovery_engine.runbook_executor._runbooks:
         runbooks.append({
             "name": rb.name,
             "service": rb.service,
@@ -774,10 +766,10 @@ async def get_recovery_status() -> dict[str, Any]:
     base["runbooks"] = runbooks
 
     # Execution history
-    base["execution_history"] = recovery_engine.runbook_executor.get_execution_history()[-20:]
+    base["execution_history"] = e.recovery_engine.runbook_executor.get_execution_history()[-20:]
 
     # Recovery history
-    base["recovery_history"] = recovery_engine._history[-20:]
+    base["recovery_history"] = e.recovery_engine._history[-20:]
 
     # Tier definitions from config
     base["tier_targets"] = {
@@ -802,17 +794,18 @@ async def get_recovery_status() -> dict[str, Any]:
 
 @app.get("/api/aref/evolution")
 async def get_evolution_status() -> dict[str, Any]:
-    if not evolution_engine:
+    e = get_engines()
+    if not e.evolution_engine:
         return {"status": "not_running"}
 
     config = get_config().evolution
-    base = evolution_engine.get_status()
+    base = e.evolution_engine.get_status()
 
     # Enrich reviews with full detail
-    base["reviews"] = evolution_engine._reviews[-20:]
+    base["reviews"] = e.evolution_engine._reviews[-20:]
 
     # Enrich action items with per-item detail
-    all_items = list(evolution_engine.action_tracker._items.values())
+    all_items = list(e.evolution_engine.action_tracker._items.values())
     base["action_items"] = [
         {
             "action_id": a.action_id,
@@ -831,11 +824,11 @@ async def get_evolution_status() -> dict[str, Any]:
     ]
 
     # Patterns
-    base["patterns"] = evolution_engine.pattern_matcher._patterns
-    base["recurrence_rate"] = evolution_engine.pattern_matcher.get_recurrence_rate()
+    base["patterns"] = e.evolution_engine.pattern_matcher._patterns
+    base["recurrence_rate"] = e.evolution_engine.pattern_matcher.get_recurrence_rate()
 
     # Knowledge base entries
-    base["knowledge_base_entries"] = evolution_engine.knowledge_base._entries[-20:]
+    base["knowledge_base_entries"] = e.evolution_engine.knowledge_base._entries[-20:]
 
     # Six-step review process metadata
     base["review_process"] = [
@@ -859,7 +852,8 @@ async def get_evolution_status() -> dict[str, Any]:
 
 @app.get("/api/aref/maturity")
 async def get_maturity() -> dict[str, Any]:
-    if not maturity_assessor:
+    e = get_engines()
+    if not e.maturity_assessor:
         return {"status": "not_running"}
     context = {
         "detection": {"sli_count": 5, "anomaly_detection": True, "mttd": 180},
@@ -868,7 +862,7 @@ async def get_maturity() -> dict[str, Any]:
         "recovery": {"runbook_count": 5, "drills_per_year": 4, "mttr": 600},
         "evolution": {"review_count": 3, "action_completion_rate": 80, "actions_per_quarter": 6},
     }
-    report = maturity_assessor.assess(context)
+    report = e.maturity_assessor.assess(context)
     return {
         "assessments": {p: {"level": a.level.value, "score": a.score, "gaps": a.gaps} for p, a in report.assessments.items()},
         "crs_scores": report.crs_scores,
@@ -878,6 +872,7 @@ async def get_maturity() -> dict[str, Any]:
 
 @app.get("/api/aref/metrics")
 async def get_aref_metrics() -> dict[str, Any]:
+    e = get_engines()
     from aref.core.config import CRS_WEIGHT_PROFILES, RiskProfile
     from aref.core.metrics import MetricsEngine
 
@@ -890,14 +885,14 @@ async def get_aref_metrics() -> dict[str, Any]:
         "detection": 2.0, "absorption": 2.0, "adaptation": 2.0,
         "recovery": 2.0, "evolution": 1.5,
     }
-    if detection_engine:
-        stats = detection_engine.get_alert_stats()
+    if e.detection_engine:
+        stats = e.detection_engine.get_alert_stats()
         pillar_scores["detection"] = min(5.0, 2.0 + (1.0 if stats["total_alerts"] > 0 else 0))
-    if recovery_engine:
-        rec = recovery_engine.get_status()
+    if e.recovery_engine:
+        rec = e.recovery_engine.get_status()
         pillar_scores["recovery"] = min(5.0, 2.0 + (1.0 if rec["total_recovered"] > 0 else 0))
-    if evolution_engine:
-        evo = evolution_engine.get_status()
+    if e.evolution_engine:
+        evo = e.evolution_engine.get_status()
         pillar_scores["evolution"] = min(5.0, 1.5 + (1.0 if evo["total_reviews"] > 0 else 0))
 
     crs_profiles = {}
@@ -954,16 +949,17 @@ async def get_aref_metrics() -> dict[str, Any]:
 
 @app.post("/api/aref/chaos/start")
 async def start_chaos(request: Request) -> dict[str, Any]:
-    if not fault_injector:
+    eng = get_engines()
+    if not eng.fault_injector:
         return {"error": "Chaos module not initialized"}
     body = await request.json()
     experiment_name = body.get("experiment", "")
 
-    exp = next((e for e in EXPERIMENTS if e.name == experiment_name), None)
+    exp = next((x for x in EXPERIMENTS if x.name == experiment_name), None)
     if not exp:
         return {"error": f"Unknown experiment: {experiment_name}"}
 
-    injection = await fault_injector.inject(
+    injection = await eng.fault_injector.inject(
         target_service=exp.target_service,
         fault_type=exp.fault_type,
         rate=exp.fault_rate,
@@ -975,17 +971,19 @@ async def start_chaos(request: Request) -> dict[str, Any]:
 
 @app.post("/api/aref/chaos/stop")
 async def stop_chaos() -> dict[str, Any]:
-    if not fault_injector:
+    eng = get_engines()
+    if not eng.fault_injector:
         return {"error": "Chaos module not initialized"}
-    count = await fault_injector.rollback_all()
+    count = await eng.fault_injector.rollback_all()
     return {"status": "stopped", "rolled_back": count}
 
 
 @app.get("/api/aref/chaos/status")
 async def chaos_status() -> dict[str, Any]:
-    if not fault_injector:
+    eng = get_engines()
+    if not eng.fault_injector:
         return {"active": []}
-    return fault_injector.get_status()
+    return eng.fault_injector.get_status()
 
 
 # ---------------------------------------------------------------------------
