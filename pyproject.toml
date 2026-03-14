@@ -14,12 +14,6 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.27.0",
     "httpx>=0.27.0",
-    # Database
-    "sqlalchemy[asyncio]>=2.0.25",
-    "asyncpg>=0.29.0",
-    "alembic>=1.13.0",
-    # Redis
-    "redis[hiredis]>=5.0.0",
     # Monitoring & metrics
     "prometheus-client>=0.20.0",
     "prometheus-fastapi-instrumentator>=7.0.0",
@@ -28,22 +22,13 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     # CLI
     "rich>=13.7.0",
-    "textual>=0.50.0",
     "click>=8.1.0",
     # ML / anomaly detection
     "numpy>=1.26.0",
-    "scikit-learn>=1.4.0",
-    # Scheduling & async
-    "apscheduler>=3.10.0",
-    "tenacity>=8.2.0",
     # YAML for runbooks
     "pyyaml>=6.0.0",
     # Logging
     "structlog>=24.1.0",
-    # Jinja for templates/reports
-    "jinja2>=3.1.0",
-    # Charts for dashboard
-    "plotly>=5.18.0",
 ]
 
 [project.optional-dependencies]

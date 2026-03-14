@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev curl && \
+    gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy everything first (source needed for hatchling build)
