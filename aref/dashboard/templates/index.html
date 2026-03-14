@@ -1,12 +1,12 @@
 <!--
 ✒ Metadata
-    - Title: AREF Dashboard Template (AREF Edition - v2.0)
+    - Title: AREF Dashboard Template (AREF Edition - v3.0)
     - File Name: index.html
     - Relative Path: aref/dashboard/templates/index.html
     - Artifact Type: script
-    - Version: 2.0.0
-    - Date: 2026-03-13
-    - Update: Thursday, March 13, 2026
+    - Version: 3.0.0
+    - Date: 2026-03-14
+    - Update: Friday, March 14, 2026
     - Author: Dennis 'dnoice' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 4
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -166,6 +166,12 @@
     <span class="header-title">Adaptive Resilience Engineering Framework</span>
     <div class="header-actions">
       <span id="system-status" class="header-badge badge-healthy">OPERATIONAL</span>
+      <button id="theme-toggle" class="icon-btn" title="Toggle light/dark theme" aria-label="Toggle theme">
+        <span class="theme-icon">☀</span>
+      </button>
+      <button id="open-customizer" class="icon-btn" title="Customize widgets" aria-label="Open widget customizer">
+        <span>⚙</span>
+      </button>
     </div>
   </header>
 
@@ -187,17 +193,53 @@
       </div>
 
       <!-- Pillar Cards -->
-      <div id="pillar-cards" class="card-grid card-grid--pillars stagger"></div>
+      <div class="widget-wrapper" data-widget-id="pillar-cards" draggable="true">
+        <div class="widget-header">
+          <span class="widget-drag-handle" title="Drag to reorder">⠿</span>
+          <span class="widget-title">Pillar Overview</span>
+          <div class="widget-controls">
+            <button class="widget-collapse-btn icon-btn" onclick="WidgetManager.toggleCollapse('pillar-cards')" title="Collapse">−</button>
+            <button class="widget-visibility-btn icon-btn" onclick="WidgetManager.toggleVisibility('pillar-cards')" title="Hide">×</button>
+          </div>
+        </div>
+        <div class="widget-body">
+          <div id="pillar-cards" class="card-grid card-grid--pillars stagger"></div>
+        </div>
+      </div>
 
       <!-- CRS + Radar Row -->
       <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
-        <div class="card card--glow">
-          <div class="card-title" style="margin-bottom:var(--space-lg)">Composite Resilience Score</div>
-          <div id="crs-gauge" class="crs-gauge"></div>
+        <div class="widget-wrapper" data-widget-id="crs-gauge" draggable="true">
+          <div class="widget-header">
+            <span class="widget-drag-handle" title="Drag to reorder">⠿</span>
+            <span class="widget-title">CRS Score</span>
+            <div class="widget-controls">
+              <button class="widget-collapse-btn icon-btn" onclick="WidgetManager.toggleCollapse('crs-gauge')" title="Collapse">−</button>
+              <button class="widget-visibility-btn icon-btn" onclick="WidgetManager.toggleVisibility('crs-gauge')" title="Hide">×</button>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="card card--glow">
+              <div class="card-title" style="margin-bottom:var(--space-lg)">Composite Resilience Score</div>
+              <div id="crs-gauge" class="crs-gauge"></div>
+            </div>
+          </div>
         </div>
-        <div class="card card--glow">
-          <div class="card-title" style="margin-bottom:var(--space-lg)">Maturity Radar</div>
-          <div id="maturity-radar"></div>
+        <div class="widget-wrapper" data-widget-id="maturity-radar" draggable="true">
+          <div class="widget-header">
+            <span class="widget-drag-handle" title="Drag to reorder">⠿</span>
+            <span class="widget-title">Maturity Radar</span>
+            <div class="widget-controls">
+              <button class="widget-collapse-btn icon-btn" onclick="WidgetManager.toggleCollapse('maturity-radar')" title="Collapse">−</button>
+              <button class="widget-visibility-btn icon-btn" onclick="WidgetManager.toggleVisibility('maturity-radar')" title="Hide">×</button>
+            </div>
+          </div>
+          <div class="widget-body">
+            <div class="card card--glow">
+              <div class="card-title" style="margin-bottom:var(--space-lg)">Maturity Radar</div>
+              <div id="maturity-radar"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1224,6 +1266,17 @@
   </main>
 </div>
 
+<div id="widget-customizer" class="customizer-overlay" hidden>
+  <div class="customizer-panel">
+    <div class="customizer-header">
+      <h3>Customize Widgets</h3>
+      <button id="close-customizer" class="icon-btn" aria-label="Close customizer">✕</button>
+    </div>
+    <div id="customizer-list" class="customizer-list"></div>
+  </div>
+</div>
+
+<script src="/static/js/widgets.js"></script>
 <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
