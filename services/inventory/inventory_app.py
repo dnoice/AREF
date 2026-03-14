@@ -116,7 +116,8 @@ import structlog
 from fastapi import HTTPException, Request
 from prometheus_client import Counter, Gauge, Histogram
 
-from services.base import create_service
+from services.base import create_service, maybe_inject_chaos
+from services.state import InMemoryStore, BoundedLog
 from aref.core.events import Event, EventCategory, EventSeverity, get_event_bus
 
 logger = structlog.get_logger(__name__)
@@ -160,14 +161,13 @@ _CATALOG: dict[str, dict[str, Any]] = {
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
-_stock: dict[str, int] = {
+_stock: InMemoryStore[int] = InMemoryStore(max_entries=10_000, initial={
     "WIDGET-001": 500, "WIDGET-002": 250, "GADGET-001": 100,
     "GADGET-002": 75, "PREMIUM-001": 25,
-}
-_reservations: dict[str, dict[str, Any]] = {}   # reservation_id -> {order_id, items, created_at, expires_at}
-_stock_movements: list[dict[str, Any]] = []      # audit trail
+})
+_reservations: InMemoryStore[dict[str, Any]] = InMemoryStore(max_entries=10_000)
+_stock_movements: BoundedLog[dict[str, Any]] = BoundedLog(max_entries=5000)
 _current_tier = DegradationTier.FULL
-_failure_mode: dict[str, Any] = {"enabled": False, "type": None, "rate": 0.0}
 _low_stock_fired: set[str] = set()  # track which SKUs already fired alerts
 
 RESERVATION_TTL = 300.0  # 5 minutes
@@ -183,8 +183,6 @@ def _record_movement(sku: str, qty_delta: int, reason: str, ref: str = "") -> No
         "reason": reason, "ref": ref, "timestamp": time.time(),
     }
     _stock_movements.append(entry)
-    if len(_stock_movements) > 5000:
-        _stock_movements.pop(0)
     STOCK_LEVEL.labels(sku=sku).set(_stock.get(sku, 0))
 
 
@@ -227,42 +225,12 @@ def _expire_reservations() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Chaos injection
-# ---------------------------------------------------------------------------
-async def _maybe_inject_chaos() -> None:
-    if not _failure_mode["enabled"]:
-        return
-    if random.random() >= _failure_mode.get("rate", 0.5):
-        return
-    if _failure_mode["type"] == "error":
-        raise HTTPException(status_code=500, detail="Injected inventory failure")
-    elif _failure_mode["type"] == "latency":
-        await asyncio.sleep(_failure_mode.get("delay", 2.0))
-
-
-@app.post("/chaos/enable")
-async def enable_chaos(request: Request) -> dict[str, Any]:
-    global _failure_mode
-    body = await request.json()
-    _failure_mode = {"enabled": True, "type": body.get("type", "error"),
-                     "rate": body.get("rate", 0.5), "delay": body.get("delay", 2.0)}
-    return {"status": "chaos_enabled", "mode": _failure_mode}
-
-
-@app.post("/chaos/disable")
-async def disable_chaos() -> dict[str, Any]:
-    global _failure_mode
-    _failure_mode = {"enabled": False, "type": None, "rate": 0.0}
-    return {"status": "chaos_disabled"}
-
-
-# ---------------------------------------------------------------------------
 # Inventory check
 # ---------------------------------------------------------------------------
 @app.post("/inventory/check")
 async def check_inventory(request: Request) -> dict[str, Any]:
     start = time.perf_counter()
-    await _maybe_inject_chaos()
+    await maybe_inject_chaos(request.app, detail="Injected inventory failure")
 
     body = await request.json()
     items = body.get("items", [])

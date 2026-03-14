@@ -107,6 +107,7 @@ from fastapi import Request
 from prometheus_client import Counter, Gauge, Histogram
 
 from services.base import create_service
+from services.state import BoundedLog
 from aref.core.events import Event, EventCategory, EventSeverity, get_event_bus
 
 logger = structlog.get_logger(__name__)
@@ -178,10 +179,9 @@ PRIORITY_ORDER = {"critical": 0, "high": 1, "normal": 2, "low": 3}
 # State
 # ---------------------------------------------------------------------------
 _queue: deque[dict[str, Any]] = deque(maxlen=10_000)
-_sent: list[dict[str, Any]] = []
+_sent: BoundedLog[dict[str, Any]] = BoundedLog(max_entries=5000)
 _enabled = True
 _shed_level = "none"   # none, low, non_critical, all
-_failure_mode: dict[str, Any] = {"enabled": False, "type": None, "rate": 0.0}
 _max_retries = 3
 
 
@@ -199,24 +199,6 @@ def _should_shed(priority: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Chaos injection
-# ---------------------------------------------------------------------------
-@app.post("/chaos/enable")
-async def enable_chaos(request: Request) -> dict[str, Any]:
-    global _failure_mode
-    body = await request.json()
-    _failure_mode = {"enabled": True, "type": body.get("type", "error"), "rate": body.get("rate", 0.3)}
-    return {"status": "chaos_enabled", "mode": _failure_mode}
-
-
-@app.post("/chaos/disable")
-async def disable_chaos() -> dict[str, Any]:
-    global _failure_mode
-    _failure_mode = {"enabled": False, "type": None, "rate": 0.0}
-    return {"status": "chaos_disabled"}
-
-
-# ---------------------------------------------------------------------------
 # Core dispatch
 # ---------------------------------------------------------------------------
 async def _deliver(notification: dict[str, Any]) -> None:
@@ -231,10 +213,11 @@ async def _deliver(notification: dict[str, Any]) -> None:
         latency = ch_cfg["latency_base"] + random.uniform(0, 0.15)
         await asyncio.sleep(latency)
 
-        # Chaos injection
+        # Chaos injection (uses shared chaos mode from base factory)
+        chaos = app.state.chaos_mode
         chaos_fail = (
-            _failure_mode["enabled"]
-            and random.random() < _failure_mode.get("rate", 0.3)
+            chaos["enabled"]
+            and random.random() < chaos.get("rate", 0.3)
         )
         natural_fail = random.random() < ch_cfg["failure_rate"]
 
@@ -272,10 +255,6 @@ async def _deliver(notification: dict[str, Any]) -> None:
     if notification in _queue:
         _queue.remove(notification)
     QUEUE_DEPTH.set(len(_queue))
-
-    # Keep sent list bounded
-    if len(_sent) > 5000:
-        _sent.pop(0)
 
 
 # ---------------------------------------------------------------------------

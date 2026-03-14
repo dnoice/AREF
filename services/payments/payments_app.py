@@ -117,6 +117,7 @@ from fastapi import HTTPException, Request
 from prometheus_client import Counter, Gauge, Histogram
 
 from services.base import create_service
+from services.state import InMemoryStore, BoundedLog
 from aref.core.events import Event, EventCategory, EventSeverity, get_event_bus
 
 logger = structlog.get_logger(__name__)
@@ -153,10 +154,9 @@ AUTO_FAILOVER_THRESHOLD = 3  # consecutive failures before auto-switch
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
-_payments: dict[str, dict[str, Any]] = {}
-_refunds: dict[str, dict[str, Any]] = {}
-_failure_mode: dict[str, Any] = {"enabled": False, "type": None, "rate": 0.0}
-_provider_switch_log: list[dict[str, Any]] = []
+_payments: InMemoryStore[dict[str, Any]] = InMemoryStore(max_entries=10_000)
+_refunds: InMemoryStore[dict[str, Any]] = InMemoryStore(max_entries=10_000)
+_provider_switch_log: BoundedLog[dict[str, Any]] = BoundedLog(max_entries=1000)
 
 
 def _next_provider(current: str) -> str | None:
@@ -200,14 +200,15 @@ async def simulate_provider(provider: str, amount: float) -> dict[str, Any]:
     """Simulate a payment provider call with realistic latency and failure characteristics."""
     config = PROVIDERS.get(provider, PROVIDERS["stripe"])
 
-    # Chaos injection
-    if _failure_mode["enabled"]:
-        if random.random() < _failure_mode.get("rate", 0.5):
-            if _failure_mode["type"] == "error":
+    # Chaos injection (uses shared chaos mode from base factory)
+    chaos = app.state.chaos_mode
+    if chaos["enabled"]:
+        if random.random() < chaos.get("rate", 0.5):
+            if chaos["type"] == "error":
                 raise Exception(f"Provider {provider} injected failure")
-            elif _failure_mode["type"] == "latency":
-                await asyncio.sleep(_failure_mode.get("delay", 3.0))
-            elif _failure_mode["type"] == "timeout":
+            elif chaos["type"] == "latency":
+                await asyncio.sleep(chaos.get("delay", 3.0))
+            elif chaos["type"] == "timeout":
                 await asyncio.sleep(15.0)
 
     # Normal simulation
@@ -482,24 +483,3 @@ async def payment_stats() -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Chaos endpoints
-# ---------------------------------------------------------------------------
-@app.post("/chaos/enable")
-async def enable_chaos(request: Request) -> dict[str, Any]:
-    global _failure_mode
-    body = await request.json()
-    _failure_mode = {
-        "enabled": True,
-        "type": body.get("type", "error"),
-        "rate": body.get("rate", 0.5),
-        "delay": body.get("delay", 3.0),
-    }
-    return {"status": "chaos_enabled", "mode": _failure_mode}
-
-
-@app.post("/chaos/disable")
-async def disable_chaos() -> dict[str, Any]:
-    global _failure_mode
-    _failure_mode = {"enabled": False, "type": None, "rate": 0.0}
-    return {"status": "chaos_disabled"}

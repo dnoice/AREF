@@ -116,7 +116,8 @@ import structlog
 from fastapi import HTTPException, Request, Response
 from prometheus_client import Counter, Gauge, Histogram
 
-from services.base import create_service
+from services.base import create_service, maybe_inject_chaos
+from services.state import BoundedLog
 from aref.core.events import Event, EventCategory, EventSeverity, get_event_bus
 
 logger = structlog.get_logger(__name__)
@@ -158,8 +159,7 @@ SERVICE_REGISTRY: dict[str, dict[str, Any]] = {
 }
 
 _client: httpx.AsyncClient | None = None
-_failure_mode: dict[str, Any] = {"enabled": False, "type": None, "rate": 0.0}
-_request_log: list[dict[str, Any]] = []   # rolling window of recent requests
+_request_log: BoundedLog[dict[str, Any]] = BoundedLog(max_entries=200)
 _boot_time: float = time.time()
 
 # Simple per-service failure tracking for gateway-level circuit awareness
@@ -275,52 +275,14 @@ async def tracing_middleware(request: Request, call_next) -> Response:
     response.headers["X-Correlation-ID"] = correlation_id
     response.headers["X-Response-Time"] = f"{elapsed:.4f}"
 
-    # Rolling request log (keep last 200)
+    # Rolling request log (bounded at 200)
     _request_log.append({
         "method": request.method, "path": route,
         "status": response.status_code, "latency": round(elapsed, 4),
         "correlation_id": correlation_id, "timestamp": time.time(),
     })
-    if len(_request_log) > 200:
-        _request_log.pop(0)
 
     return response
-
-
-# ---------------------------------------------------------------------------
-# Chaos injection (gateway was missing this!)
-# ---------------------------------------------------------------------------
-@app.post("/chaos/enable")
-async def enable_chaos(request: Request) -> dict[str, Any]:
-    global _failure_mode
-    body = await request.json()
-    _failure_mode = {
-        "enabled": True,
-        "type": body.get("type", "error"),
-        "rate": body.get("rate", 0.5),
-        "delay": body.get("delay", 2.0),
-    }
-    logger.warning("chaos.enabled", mode=_failure_mode)
-    return {"status": "chaos_enabled", "mode": _failure_mode}
-
-
-@app.post("/chaos/disable")
-async def disable_chaos() -> dict[str, Any]:
-    global _failure_mode
-    _failure_mode = {"enabled": False, "type": None, "rate": 0.0}
-    logger.info("chaos.disabled")
-    return {"status": "chaos_disabled"}
-
-
-async def _maybe_inject_chaos() -> None:
-    if not _failure_mode["enabled"]:
-        return
-    if random.random() >= _failure_mode.get("rate", 0.5):
-        return
-    if _failure_mode["type"] == "error":
-        raise HTTPException(status_code=500, detail="Gateway injected failure")
-    elif _failure_mode["type"] == "latency":
-        await asyncio.sleep(_failure_mode.get("delay", 2.0))
 
 
 # ---------------------------------------------------------------------------
@@ -401,7 +363,7 @@ async def gateway_stats() -> dict[str, Any]:
             name: {"open": _is_circuit_open(name), "failures": len(fails)}
             for name, fails in _service_failures.items()
         },
-        "chaos_mode": _failure_mode,
+        "chaos_mode": app.state.chaos_mode,
     }
 
 
@@ -418,7 +380,7 @@ async def recent_requests(limit: int = 50) -> dict[str, Any]:
 async def create_order(request: Request) -> dict[str, Any]:
     """Route order creation through the full pipeline:
     inventory check -> order create -> payment -> notification."""
-    await _maybe_inject_chaos()
+    await maybe_inject_chaos(request.app, detail="Gateway injected failure")
 
     body = await request.json()
     correlation_id = getattr(request.state, "correlation_id", uuid.uuid4().hex[:12])

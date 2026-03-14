@@ -40,6 +40,9 @@
     - Feature 11: Best-effort memory reporting via resource.getrusage with macOS/Linux
                    byte-vs-KB normalization
     - Feature 12: Service metadata stored on app.state for downstream reference
+    - Feature 13: Chaos injection endpoints (/chaos/enable, /chaos/disable) with
+                  error, latency, and timeout fault modes — shared across all services
+    - Feature 14: maybe_inject_chaos() helper for uniform fault injection in endpoints
  
 ✒ Usage Instructions:
     Import and call from any microservice:
@@ -92,16 +95,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import os
 import platform
+import random
 import sys
 import time
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Callable
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -154,6 +159,7 @@ def create_service(
     dependencies: list[str] | None = None,
     on_startup: Callable | None = None,
     on_shutdown: Callable | None = None,
+    enable_chaos: bool = True,
 ) -> FastAPI:
     """Factory for AREF-instrumented FastAPI services.
 
@@ -362,9 +368,55 @@ def create_service(
             media_type=CONTENT_TYPE_LATEST,
         )
 
+    # -----------------------------------------------------------------------
+    # Chaos injection (shared across all AREF services)
+    # -----------------------------------------------------------------------
+    app.state.chaos_mode = {"enabled": False, "type": None, "rate": 0.0, "delay": 2.0}
+
+    if enable_chaos:
+        @app.post("/chaos/enable")
+        async def enable_chaos_endpoint(request: Request) -> dict[str, Any]:
+            body = await request.json()
+            app.state.chaos_mode = {
+                "enabled": True,
+                "type": body.get("type", "error"),
+                "rate": body.get("rate", 0.5),
+                "delay": body.get("delay", 2.0),
+            }
+            logger.warning("chaos.enabled", service=name, mode=app.state.chaos_mode)
+            return {"status": "chaos_enabled", "mode": app.state.chaos_mode}
+
+        @app.post("/chaos/disable")
+        async def disable_chaos_endpoint() -> dict[str, Any]:
+            app.state.chaos_mode = {"enabled": False, "type": None, "rate": 0.0}
+            logger.info("chaos.disabled", service=name)
+            return {"status": "chaos_disabled"}
+
     # Store service metadata on the app for reference
     app.state.service_name = name
     app.state.service_version = version
     app.state.service_dependencies = deps
 
     return app
+
+
+async def maybe_inject_chaos(
+    app: FastAPI,
+    detail: str = "Injected failure",
+) -> None:
+    """Check chaos mode and inject a fault if triggered.
+
+    Call from any service endpoint to get uniform chaos behavior:
+    error → HTTPException 500, latency → sleep, timeout → 15s sleep.
+    """
+    mode = app.state.chaos_mode
+    if not mode["enabled"]:
+        return
+    if random.random() >= mode.get("rate", 0.5):
+        return
+    if mode["type"] == "error":
+        raise HTTPException(status_code=500, detail=detail)
+    elif mode["type"] == "latency":
+        await asyncio.sleep(mode.get("delay", 2.0))
+    elif mode["type"] == "timeout":
+        await asyncio.sleep(15.0)
