@@ -65,7 +65,7 @@
 -->
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -102,7 +102,7 @@
       <svg><use href="#icon-digispace"/></svg>
       <div>
         <div class="sidebar-brand-text">AREF</div>
-        <div class="sidebar-brand-version">v2.0.0</div>
+        <div class="sidebar-brand-version">v3.0.0</div>
       </div>
     </div>
 
@@ -166,6 +166,8 @@
     <span class="header-title">Adaptive Resilience Engineering Framework</span>
     <div class="header-actions">
       <span id="system-status" class="header-badge badge-healthy">OPERATIONAL</span>
+      <button id="customizer-toggle-btn" class="customizer-toggle" title="Toggle widget customizer">&#9881;</button>
+      <button id="theme-toggle-btn" class="theme-toggle" title="Toggle theme">&#9790;</button>
     </div>
   </header>
 
@@ -187,45 +189,53 @@
       </div>
 
       <!-- Pillar Cards -->
-      <div id="pillar-cards" class="card-grid card-grid--pillars stagger"></div>
+      <div class="widget" data-widget-id="overview-pillars" data-widget-title="Pillar Overview">
+        <div id="pillar-cards" class="card-grid card-grid--pillars stagger"></div>
+      </div>
 
       <!-- CRS + Radar Row -->
-      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
-        <div class="card card--glow">
-          <div class="card-title" style="margin-bottom:var(--space-lg)">Composite Resilience Score</div>
-          <div id="crs-gauge" class="crs-gauge"></div>
-        </div>
-        <div class="card card--glow">
-          <div class="card-title" style="margin-bottom:var(--space-lg)">Maturity Radar</div>
-          <div id="maturity-radar"></div>
+      <div class="widget" data-widget-id="overview-scores" data-widget-title="CRS & Maturity Radar" style="margin-top:var(--space-xl)">
+        <div class="card-grid card-grid--2col">
+          <div class="card card--glow">
+            <div class="card-title" style="margin-bottom:var(--space-lg)">Composite Resilience Score</div>
+            <div id="crs-gauge" class="crs-gauge"></div>
+          </div>
+          <div class="card card--glow">
+            <div class="card-title" style="margin-bottom:var(--space-lg)">Maturity Radar</div>
+            <div id="maturity-radar"></div>
+          </div>
         </div>
       </div>
 
       <!-- Alerts + Services Row -->
-      <div class="card-grid card-grid--2col" style="margin-top:var(--space-xl)">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Active Alerts</div>
-            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-alert"/></svg>
+      <div class="widget" data-widget-id="overview-health" data-widget-title="Alerts & Service Health" style="margin-top:var(--space-xl)">
+        <div class="card-grid card-grid--2col">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Active Alerts</div>
+              <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-alert"/></svg>
+            </div>
+            <div id="active-alerts"></div>
           </div>
-          <div id="active-alerts"></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Service Health</div>
-            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-service"/></svg>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Service Health</div>
+              <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-service"/></svg>
+            </div>
+            <div id="service-status"></div>
           </div>
-          <div id="service-status"></div>
         </div>
       </div>
 
       <!-- Timeline -->
-      <div class="card" style="margin-top:var(--space-xl)">
-        <div class="card-header">
-          <div class="card-title">Event Timeline</div>
-          <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-clock"/></svg>
+      <div class="widget" data-widget-id="overview-timeline" data-widget-title="Event Timeline" style="margin-top:var(--space-xl)">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Event Timeline</div>
+            <svg style="width:18px;height:18px;color:var(--text-muted)"><use href="#icon-clock"/></svg>
+          </div>
+          <div id="event-timeline"></div>
         </div>
-        <div id="event-timeline"></div>
       </div>
     </div>
 
@@ -1224,6 +1234,15 @@
   </main>
 </div>
 
+<!-- Widget Customizer Panel -->
+<aside id="customizer-panel" class="customizer-panel">
+  <div class="customizer-title">Customize Dashboard</div>
+  <div class="customizer-subtitle">Toggle, reorder, and resize widgets to fit your workflow.</div>
+  <div class="customizer-widgets-list"></div>
+  <button class="customizer-reset">Reset to Default Layout</button>
+</aside>
+
+<script src="/static/js/widgets.js"></script>
 <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
